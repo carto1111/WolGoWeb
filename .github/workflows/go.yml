@@ -1,26 +1,44 @@
-name: build-go-binary
+name: Build Go Binary
 
 on:
-  release:
-    types: [created] # 表示在创建新的 Release 时触发
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
-  build-go-binary:
+  build:
+    name: Build
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        goos: [linux, windows, darwin] # 需要打包的系统
-        goarch: [amd64, arm64] # 需要打包的架构
-        exclude: # 排除某些平台和架构
-          - goarch: arm64
-            goos: windows
+        go_version: ['1.18']
+        goos: ['linux', 'windows', 'darwin']
+        goarch: ['amd64', 'arm64']
+        exclude:
+        - goos: windows
+          goarch: arm64
+        
     steps:
-      - uses: actions/checkout@v3
-      - uses: wangyoucao577/go-release-action@v1.30
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }} # 一个默认的变量，用来实现往 Release 中添加文件
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
-          goversion: 1.18 # 可以指定编译使用的 Golang 版本
-          binary_name: "WolGoWeb" # 可以指定二进制文件的名称
-          
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v3
+
+    - name: Setup go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go_version }}
+        
+    - name: Build Go Binary
+      run: |
+        export GOOS=${{ matrix.goos }}
+        export GOARCH=${{ matrix.goarch }}
+        go env
+        cd src
+        go build -o WolGoWeb-${{ matrix.goos }}-${{ matrix.goarch }}-${{ matrix.go_version }}
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: WolGoWeb-${{ matrix.goos }}-${{ matrix.goarch }}-${{ matrix.go_version }}
+        path: WolGoWeb-${{ matrix.goos }}-${{ matrix.goarch }}-${{ matrix.go_version }}
